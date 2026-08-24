@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>打单数据编辑器</title>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;background:#f6f0fa;color:#333}
+header{background:linear-gradient(135deg,#9b6be0,#7a3fc2);color:#fff;padding:14px 18px;font-size:18px;font-weight:800}
+header a{float:right;color:#fff;font-size:13px;cursor:pointer;text-decoration:none}
+.wrap{max-width:1200px;margin:16px auto;padding:0 14px}
+.btn{background:#a07cff;color:#fff;border:0;border-radius:10px;padding:8px 14px;font-size:13px;cursor:pointer;margin:3px;display:inline-block}
+.btn.green{background:#07c160}.btn.gray{background:#e9e3f2;color:#555}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.tab{padding:7px 16px;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;border:1px solid #e6def2}
+.tab.on{background:#a07cff;color:#fff;border-color:#a07cff}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;margin-top:8px;font-size:13px}
+th,td{padding:5px 7px;border-bottom:1px solid #f0ebf5;text-align:left}
+th{background:#f3eef9;font-weight:700}
+td input,td select{width:100%;box-sizing:border-box;border:1px solid #dcd3ea;border-radius:6px;padding:4px 5px;font-size:12px}
+td .nm{max-width:380px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.listbox{max-height:420px;overflow:auto;border:1px solid #e6def2;border-radius:10px;background:#fff}
+.listbox .it{padding:7px 12px;border-bottom:1px solid #f0ebf5;cursor:pointer;font-size:13px}
+.listbox .it.on{background:#f0e9fb}.listbox .it small{color:#9a6fd0}
+.muted{color:#987bb6;font-size:12px;margin-top:10px}
+#login{max-width:320px;margin:80px auto;background:#fff;border-radius:14px;padding:26px;box-shadow:0 8px 24px rgba(138,75,208,.12)}
+#login input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #ddd;border-radius:8px;margin:6px 0}
+#log{background:#fff;border-radius:10px;padding:12px;font-size:13px;margin-top:10px;display:none;white-space:pre-wrap}
+</style></head><body>
+<header>打单数据编辑器 <a onclick="doLogout()">退出</a><span style="font-size:13px;margin-left:20px">配置 / 链接 / 价格 / 游戏帧数 全都能改</span></header>
+<div id="login"><h2>登录</h2><input id="u" placeholder="账号"><input id="p" type="password" placeholder="密码"><button class="btn green" onclick="doLogin()">进入</button><div class="muted">内部工具 · 请勿外传。</div></div>
+<div class="wrap" id="main" style="display:none">
+  <div>
+    <button class="btn" onclick="file.click()">导入 JSON(payload)</button>
+    <button class="btn gray" onclick="fileXlsm.click()">导入 xlsm(仅价格表)</button>
+    <button class="btn green" onclick="exportJson()">导出 JSON</button>
+    <button class="btn gray" onclick="copyJson()">复制 JSON</button>
+    <span class="muted">提示：加/改「整机配置」请在 WPS 改表后用「打单表转JSON」；本工具用于改价格/链接/帧数。导出后到小程序「基础数据」上传发布。</span>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div id="body"></div>
+  <div id="log"></div>
+</div>
+<input type="file" id="file" accept=".json" hidden>
+<input type="file" id="fileXlsm" accept=".xlsm" hidden>
+<script>
+var PW='888888',USER='趣娜玩'; var DATA=null; var TAB='prices', selCfg=null, selLink=null, CAT='san';
+function doLogin(){ if(document.getElementById('u').value.trim()===USER&&document.getElementById('p').value===PW){document.getElementById('login').style.display='none';document.getElementById('main').style.display='block';}else alert('账号或密码不对'); }
+function doLogout(){ document.getElementById('login').style.display='block'; document.getElementById('main').style.display='none'; }
+function log(m){ var x=document.getElementById('log'); x.style.display='block'; x.textContent=m; }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+document.getElementById('file').onchange=function(e){ var f=e.target.files[0]; if(!f)return; new FileReader().onloadend && (function(){var r=new FileReader(); r.onload=function(){ try{ parseJson(r.result); }catch(err){ log('导入失败:'+err.message); } }; r.readAsText(f); })(); };
+document.getElementById('file').onchange=function(e){ var f=e.target.files[0]; if(!f)return; var r=new FileReader(); r.onload=function(){ try{ parseJson(r.result); }catch(err){ log('导入失败:'+err.message); } }; r.readAsText(f); };
+document.getElementById('fileXlsm').onchange=function(e){ var f=e.target.files[0]; if(!f)return; var r=new FileReader(); r.onload=function(){ try{ parseXlsm(r.result); log('xlsm 价格表已更新'); }catch(err){ log('xlsm 失败:'+err.message); } }; r.readAsArrayBuffer(f); };
+function parseJson(txt){ DATA=JSON.parse(txt); if(!DATA.prices) throw new Error('缺少 prices'); if(!DATA.links) DATA.links=[]; if(!DATA.configs) DATA.configs=[]; if(!DATA.frames) DATA.frames=[]; selCfg=null; selLink=null; render(); log('导入成功 · 配置'+DATA.configs.length+' · 链接'+DATA.links.length+' · 帧数'+DATA.frames.length); }
+function parseXlsm(buf){ JSZip.loadAsync(buf).then(function(z){ var p1=z.file('xl/sharedStrings.xml').async('string'),p2=z.file('xl/workbook.xml').async('string'),p3=z.file('xl/_rels/workbook.xml.rels').async('string'); return Promise.all([p1,p2,p3]).then(function(res){ var ss=(res[0].match(/<si>[\s\S]*?<\/si>/g)||[]).map(function(s){return s.replace(/<[^>]+>/g,'');}); var relm={}; res[2].replace(/Id="(rId\d+)"[^>]*Target="([^"]+)"/g,function(_,id,t){relm[id]=t;}); var sheetFile={}; res[1].replace(/<sheet\s+name="([^"]+)"[^>]*r:id="(rId\d+)"/g,function(_,nm,rid){sheetFile[nm]=relm[rid];}); var keys=Object.keys(sheetFile); return Promise.all(keys.map(function(nm){return z.file('xl/'+sheetFile[nm]).async('string');})).then(function(xmls){ var cellm={}; for(var i=0;i<keys.length;i++) cellm[keys[i]]=parseSheet(xmls[i],ss); if(!DATA) DATA={version:'1.0',prices:{}}; var tabmap={san:'三大件',re:'散热',ban:'主板',ka:'显卡',yuan:'电源',xiang:'机箱'}; Object.keys(tabmap).forEach(function(k){ var rows=cellm[tabmap[k]]||{}, m={}; for(var ref in rows){ if(ref[0]==='B'){ var name=rows[ref]; var row=ref.replace(/[A-Z]+/,''); if(name&&!/^\d+$/.test(name)&&name.indexOf('更新日期')<0&&name.indexOf('数据源')<0){ m[name]={d:toNum(rows['D'+row]),e:toNum(rows['E'+row]),f:toNum(rows['F'+row]),cat:k}; } } } DATA.prices[k]=m; }); render(); }); }); }).catch(e=>log('xlsm失败:'+e.message)); }
+function parseSheet(xml,ss){ var m={}; (xml.match(/<c r="([A-Z]+\d+)"([^>]*)>([\s\S]*?)<\/c>/g)||[]).forEach(function(c){ var mm=/<c r="([A-Z]+\d+)"([^>]*)>([\s\S]*?)<\/c>/.exec(c); var ref=mm[1],tm=/t="([^"]+)"/.exec(mm[2]),vm=/<v>([\s\S]*?)<\/v>/.exec(mm[3]); var val=vm?vm[1]:''; if(tm&&tm[1]==='s') val=ss[parseInt(val,10)]||''; m[ref]=val; }); return m; }
+function toNum(v){ v=parseFloat(v); return isNaN(v)?0:v; }
+function render(){ var tabs=document.getElementById('tabs'); var Ts=[['configs','整机配置'],['links','配置链接'],['prices','价格表'],['frames','游戏帧数']]; tabs.innerHTML=''; Ts.forEach(function(t){ var s=document.createElement('span'); s.className='tab'+(t[0]===TAB?' on':''); s.textContent=t[1]+' ('+(DATA&&DATA[t[0]]?DATA[t[0]].length:0)+')'; s.onclick=function(){TAB=t[0];render();}; tabs.appendChild(s); });
+  var body=document.getElementById('body'); if(!DATA){ body.innerHTML='<div class="muted">先导入 JSON。</div>'; return; }
+  if(TAB==='prices') body.innerHTML=renderPrices(); else if(TAB==='configs') body.innerHTML=renderConfigs(); else if(TAB==='links') body.innerHTML=renderLinks(); else if(TAB==='frames') body.innerHTML=renderFrames();
+  bindEvents();
+}
+/* ---- 价格表 ---- */
+function renderPrices(){ var h='<div class="tabs">'; var CATS=[['san','三大件'],['re','散热'],['ban','主板'],['ka','显卡'],['yuan','电源'],['xiang','机箱']]; CATS.forEach(function(c){ h+='<span class="tab'+(c[0]===CAT?' on':'')+'" onclick="CAT=\''+c[0]+'\';render()">'+c[1]+'</span>'; }); h+='</div>'; var rows=DATA.prices[CAT]||{}; h+='<table><tr><th>名称</th><th>成本d</th><th>售价e</th><th>数值f</th><th></th></tr>'; Object.keys(rows).forEach(function(nm){ var o=rows[nm]; h+='<tr><td class="nm" title="'+esc(nm)+'">'+esc(nm)+'</td><td><input data-p="'+esc(nm)+'" data-f="d" value="'+o.d+'"></td><td><input data-p="'+esc(nm)+'" data-f="e" value="'+o.e+'"></td><td><input data-p="'+esc(nm)+'" data-f="f" value="'+o.f+'"></td><td><button class="btn gray" onclick="delPrice(\''+nm.replace(/'/g,"\\'")+'\')">删</button></td></tr>'; }); h+='</table>'; return h; }
+function delPrice(nm){ delete DATA.prices[CAT][nm]; render(); }
+/* ---- 整机配置 ---- */
+function renderConfigs(){ var h='<div class="listbox">'; (DATA.configs||[]).forEach(function(c,i){ h+='<div class="it'+(selCfg===i?' on':'')+'" onclick="selCfg='+i+';render()">'+esc(c.sheet)+' <small>'+esc(String(c.key).slice(0,40))+'</small></div>'; }); h+='</div>'; if(selCfg==null) return h; var c=DATA.configs[selCfg]; h+='<h3>'+esc(c.sheet)+' · '+esc(c.fn)+'</h3><table><tr><th>件</th><th>型号</th><th>数量</th></tr>'; c.items.forEach(function(it,idx){ h+='<tr><td><input data-ci="'+idx+'" data-fi="ltext" value="'+esc(it.ltext)+'"></td><td><input data-ci="'+idx+'" data-fi="name" value="'+esc(it.name)+'"></td><td><input data-ci="'+idx+'" data-fi="qty" value="'+esc(it.qty)+'"></td></tr>'; }); h+='<tr><td colspan=3><button class="btn" onclick="addItem()">+ 加配件</button> <button class="btn gray" onclick="delItem()">删最后一件</button></td></tr></table>'; return h; }
+function addItem(){ var c=DATA.configs[selCfg]; c.items.push({ltext:'',name:'',qty:'1'}); render(); }
+function delItem(){ var c=DATA.configs[selCfg]; c.items.pop(); render(); }
+/* ---- 配置链接 ---- */
+function renderLinks(){ var h='<div class="listbox">'; (DATA.links||[]).forEach(function(l,i){ h+='<div class="it'+(selLink===i?' on':'')+'" onclick="selLink='+i+';render()">'+esc(l.a)+' <small>'+esc(String(l.c))+'</small></div>'; }); h+='</div>'; if(selLink==null) return h; var l=DATA.links[selLink]; h+='<h3>链接：'+esc(l.a)+'</h3><table><tr><th>字段</th><th>值</th></tr>';
+  h+='<tr><td>链接名 a</td><td><input id="la" value="'+esc(l.a)+'"></td></tr>';
+  h+='<tr><td>整机key/配置名 b</td><td><input id="lb" value="'+esc(l.b)+'"></td></tr>';
+  h+='<tr><td>价格 c</td><td><input id="lc" type="number" value="'+l.c+'"></td></tr></table>';
+  h+='<h4>固态下拉</h4><table><tr><th>名称</th><th>加价</th></tr>'; (l.ssd||[]).forEach(function(s,idx){ h+='<tr><td><input data-s="'+idx+'" data-fi="n" value="'+esc(s.n)+'"></td><td><input data-s="'+idx+'" data-fi="p" value="'+esc(s.p)+'"></td></tr>'; }); h+='<tr><td colspan=2><button class="btn" onclick="addOpt(\'ssd\')">+ 加固态</button></td></tr></table>';
+  h+='<h4>显卡下拉</h4><table><tr><th>名称</th><th>加价</th></tr>'; (l.gpu||[]).forEach(function(s,idx){ h+='<tr><td><input data-g="'+idx+'" data-fi="n" value="'+esc(s.n)+'"></td><td><input data-g="'+idx+'" data-fi="p" value="'+esc(s.p)+'"></td></tr>'; }); h+='<tr><td colspan=2><button class="btn" onclick="addOpt(\'gpu\')">+ 加显卡</button></td></tr></table>';
+  return h; }
+function addOpt(k){ var l=DATA.links[selLink]; l[k]=l[k]||[]; l[k].push({n:'',p:''}); render(); }
+/* ---- 游戏帧数 ---- */
+function renderFrames(){ var h='<table><tr><th>规则ID</th><th>说明label</th><th>帧数图img</th><th></th></tr>'; (DATA.frames||[]).forEach(function(f,i){ h+='<tr><td>'+esc(f.id)+'</td><td><input data-fid="'+i+'" data-fi="label" value="'+esc(f.label)+'"></td><td><select data-fid="'+i+'" data-fi="img">'+['fps1.jpg','fps2.jpg','fps3.jpg','fps4.jpg','fps5.jpg'].map(function(x){return '<option'+(f.img===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></td><td><button class="btn gray" onclick="delFrame('+i+')">删</button></td></tr>'; }); h+='<tr><td colspan=4><button class="btn" onclick="addFrame()">+ 加规则</button></td></tr></table>'; h+='<div class="muted">规则ID对应 engine.js 里写死的匹配（B1~B5）。你改说明/图片即可。</div>'; return h; }
+function addFrame(){ DATA.frames.push({id:'B'+(DATA.frames.length+1),label:'',img:'fps1.jpg'}); render(); }
+function delFrame(i){ DATA.frames.splice(i,1); render(); }
+/* ---- 绑定输入 ---- */
+function bindEvents(){ var b=document.getElementById('body');
+  b.querySelectorAll('input[data-p]').forEach(function(inp){ inp.onchange=function(){ DATA.prices[CAT][inp.dataset.p][inp.dataset.f]=toNum(inp.value); }; });
+  b.querySelectorAll('input[data-ci]').forEach(function(inp){ inp.onchange=function(){ DATA.configs[selCfg].items[+inp.dataset.ci][inp.dataset.fi]=inp.value; }; });
+  b.querySelectorAll('input[data-s]').forEach(function(inp){ inp.onchange=function(){ DATA.links[selLink].ssd[+inp.dataset.s][inp.dataset.fi]=inp.value; }; });
+  b.querySelectorAll('input[data-g]').forEach(function(inp){ inp.onchange=function(){ DATA.links[selLink].gpu[+inp.dataset.g][inp.dataset.fi]=inp.value; }; });
+  b.querySelectorAll('input[data-fid]').forEach(function(inp){ inp.onchange=function(){ DATA.frames[+inp.dataset.fid][inp.dataset.fi]=inp.value; }; });
+  b.querySelectorAll('select[data-fid]').forEach(function(inp){ inp.onchange=function(){ DATA.frames[+inp.dataset.fid][inp.dataset.fi]=inp.value; }; });
+  var la=document.getElementById('la'); if(la) la.onchange=function(){ DATA.links[selLink].a=la.value; };
+  var lb=document.getElementById('lb'); if(lb) lb.onchange=function(){ DATA.links[selLink].b=lb.value; };
+  var lc=document.getElementById('lc'); if(lc) lc.onchange=function(){ DATA.links[selLink].c=toNum(lc.value); };
+}
+/* ---- 导出 ---- */
+function exportJson(){ if(!DATA){alert('先导入');return;} var blob=new Blob([JSON.stringify(DATA,function(k,v){return v;} )],{type:'application/json'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='data_payload.json'; a.click(); log('已导出 data_payload.json'); }
+function copyJson(){ if(!DATA){alert('先导入');return;} navigator.clipboard.writeText(JSON.stringify(DATA)).then(function(){log('已复制');}).catch(function(){log('复制失败');}); }
+</script>
+</body></html>
