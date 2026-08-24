@@ -8,7 +8,7 @@ header{background:linear-gradient(135deg,#9b6be0,#7a3fc2);color:#fff;padding:14p
 header a{float:right;color:#fff;font-size:13px;cursor:pointer;text-decoration:none}
 .wrap{max-width:1200px;margin:16px auto;padding:0 14px}
 .btn{background:#a07cff;color:#fff;border:0;border-radius:10px;padding:8px 14px;font-size:13px;cursor:pointer;margin:3px;display:inline-block}
-.btn.green{background:#07c160}.btn.gray{background:#e9e3f2;color:#555}
+.btn.green{background:#07c160}.btn.gray{background:#e9e3f2;color:#555}.btn.orange{background:#ff8c1a;color:#fff}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
 .tab{padding:7px 16px;border-radius:10px;background:#fff;cursor:pointer;font-size:14px;border:1px solid #e6def2}
 .tab.on{background:#a07cff;color:#fff;border-color:#a07cff}
@@ -26,14 +26,15 @@ td .nm{max-width:380px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 #log{background:#fff;border-radius:10px;padding:12px;font-size:13px;margin-top:10px;display:none;white-space:pre-wrap}
 </style></head><body>
 <header>打单数据编辑器 <a onclick="doLogout()">退出</a><span style="font-size:13px;margin-left:20px">配置 / 链接 / 价格 / 游戏帧数 全都能改</span></header>
-<div id="login"><h2>登录</h2><input id="u" placeholder="账号"><input id="p" type="password" placeholder="密码"><button class="btn green" onclick="doLogin()">进入</button><div class="muted">内部工具 · 请勿外传。</div></div>
+<div id="login"><h2>登录</h2><input id="u" placeholder="账号" value="趣娜玩"><input id="p" type="password" placeholder="密码"><button class="btn green" onclick="doLogin()">进入</button><div class="muted">内部工具 · 请勿外传。</div></div>
 <div class="wrap" id="main" style="display:none">
   <div>
     <button class="btn" onclick="file.click()">导入 JSON(payload)</button>
     <button class="btn gray" onclick="fileXlsm.click()">导入 xlsm(仅价格表)</button>
     <button class="btn green" onclick="exportJson()">导出 JSON</button>
     <button class="btn gray" onclick="copyJson()">复制 JSON</button>
-    <span class="muted">提示：加/改「整机配置」请在 WPS 改表后用「打单表转JSON」；本工具用于改价格/链接/帧数。导出后到小程序「基础数据」上传发布。</span>
+    <button class="btn orange" onclick="syncGit()">💾 保存并同步到官网</button>
+    <span class="muted">提示：加/改「整机配置」请在 WPS 改表后用「打单表转JSON」；改价/链接/帧数在此，点「保存并同步到官网」后小程序「验证同步」即拉最新。</span>
   </div>
   <div class="tabs" id="tabs"></div>
   <div id="body"></div>
@@ -43,7 +44,12 @@ td .nm{max-width:380px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 <input type="file" id="fileXlsm" accept=".xlsm" hidden>
 <script>
 var PW='888888',USER='趣娜玩'; var DATA=null; var TAB='prices', selCfg=null, selLink=null, CAT='san';
-function doLogin(){ if(document.getElementById('u').value.trim()===USER&&document.getElementById('p').value===PW){document.getElementById('login').style.display='none';document.getElementById('main').style.display='block';}else alert('账号或密码不对'); }
+function doLogin(){ if(document.getElementById('u').value.trim()===USER&&document.getElementById('p').value===PW){
+    document.getElementById('login').style.display='none';document.getElementById('main').style.display='block';
+    // 自动载入上次保存的数据（localStorage，同一设备）
+    try{ var saved=localStorage.getItem('dadanData'); if(saved){ parseJson(saved); log('已载入本设备上次保存的数据'); } }catch(e){}
+  }else alert('账号或密码不对'); }
+function saveLocal(){ try{ if(DATA) localStorage.setItem('dadanData', JSON.stringify(DATA)); }catch(e){} }
 function doLogout(){ document.getElementById('login').style.display='block'; document.getElementById('main').style.display='none'; }
 function log(m){ var x=document.getElementById('log'); x.style.display='block'; x.textContent=m; }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
@@ -81,18 +87,36 @@ function addFrame(){ DATA.frames.push({id:'B'+(DATA.frames.length+1),label:'',im
 function delFrame(i){ DATA.frames.splice(i,1); render(); }
 /* ---- 绑定输入 ---- */
 function bindEvents(){ var b=document.getElementById('body');
-  b.querySelectorAll('input[data-p]').forEach(function(inp){ inp.onchange=function(){ DATA.prices[CAT][inp.dataset.p][inp.dataset.f]=toNum(inp.value); }; });
-  b.querySelectorAll('input[data-ci]').forEach(function(inp){ inp.onchange=function(){ DATA.configs[selCfg].items[+inp.dataset.ci][inp.dataset.fi]=inp.value; }; });
-  b.querySelectorAll('input[data-s]').forEach(function(inp){ inp.onchange=function(){ DATA.links[selLink].ssd[+inp.dataset.s][inp.dataset.fi]=inp.value; }; });
-  b.querySelectorAll('input[data-g]').forEach(function(inp){ inp.onchange=function(){ DATA.links[selLink].gpu[+inp.dataset.g][inp.dataset.fi]=inp.value; }; });
-  b.querySelectorAll('input[data-fid]').forEach(function(inp){ inp.onchange=function(){ DATA.frames[+inp.dataset.fid][inp.dataset.fi]=inp.value; }; });
-  b.querySelectorAll('select[data-fid]').forEach(function(inp){ inp.onchange=function(){ DATA.frames[+inp.dataset.fid][inp.dataset.fi]=inp.value; }; });
-  var la=document.getElementById('la'); if(la) la.onchange=function(){ DATA.links[selLink].a=la.value; };
-  var lb=document.getElementById('lb'); if(lb) lb.onchange=function(){ DATA.links[selLink].b=lb.value; };
-  var lc=document.getElementById('lc'); if(lc) lc.onchange=function(){ DATA.links[selLink].c=toNum(lc.value); };
+  b.querySelectorAll('input[data-p]').forEach(function(inp){ inp.onchange=function(){ DATA.prices[CAT][inp.dataset.p][inp.dataset.f]=toNum(inp.value); saveLocal(); }; });
+  b.querySelectorAll('input[data-ci]').forEach(function(inp){ inp.onchange=function(){ DATA.configs[selCfg].items[+inp.dataset.ci][inp.dataset.fi]=inp.value; saveLocal(); }; });
+  b.querySelectorAll('input[data-s]').forEach(function(inp){ inp.onchange=function(){ DATA.links[selLink].ssd[+inp.dataset.s][inp.dataset.fi]=inp.value; saveLocal(); }; });
+  b.querySelectorAll('input[data-g]').forEach(function(inp){ inp.onchange=function(){ DATA.links[selLink].gpu[+inp.dataset.g][inp.dataset.fi]=inp.value; saveLocal(); }; });
+  b.querySelectorAll('input[data-fid]').forEach(function(inp){ inp.onchange=function(){ DATA.frames[+inp.dataset.fid][inp.dataset.fi]=inp.value; saveLocal(); }; });
+  b.querySelectorAll('select[data-fid]').forEach(function(inp){ inp.onchange=function(){ DATA.frames[+inp.dataset.fid][inp.dataset.fi]=inp.value; saveLocal(); }; });
+  var la=document.getElementById('la'); if(la) la.onchange=function(){ DATA.links[selLink].a=la.value; saveLocal(); };
+  var lb=document.getElementById('lb'); if(lb) lb.onchange=function(){ DATA.links[selLink].b=lb.value; saveLocal(); };
+  var lc=document.getElementById('lc'); if(lc) lc.onchange=function(){ DATA.links[selLink].c=toNum(lc.value); saveLocal(); };
 }
 /* ---- 导出 ---- */
 function exportJson(){ if(!DATA){alert('先导入');return;} var blob=new Blob([JSON.stringify(DATA,function(k,v){return v;} )],{type:'application/json'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='data_payload.json'; a.click(); log('已导出 data_payload.json'); }
 function copyJson(){ if(!DATA){alert('先导入');return;} navigator.clipboard.writeText(JSON.stringify(DATA)).then(function(){log('已复制');}).catch(function(){log('复制失败');}); }
+/* ---- 保存并同步到 GitHub ---- */
+var GH_OWNER='silo08', GH_REPO='dadan-data', GH_PATH='data.json';
+function syncGit(){
+  if(!DATA){ alert('请先导入并编辑数据'); return; }
+  var token=localStorage.getItem('ghToken');
+  if(!token){ token=prompt('请输入 GitHub 令牌(PAT)\n（首次需在 github.com → Settings → Developer settings → Personal access tokens 生成，只需填一次，存本机）'); if(!token) return; localStorage.setItem('ghToken', token); }
+  var url='https://api.github.com/repos/'+GH_OWNER+'/'+GH_REPO+'/contents/'+GH_PATH;
+  var b64=null; try{ b64=btoa(unescape(encodeURIComponent(JSON.stringify(DATA)))); }catch(e){ alert('base64 编码失败'); return; }
+  log('正在同步到 GitHub…');
+  fetch(url,{headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}}).then(function(r){return r.json();}).then(function(meta){
+    var body={message:'打单数据编辑器 同步', content:b64, branch:'main'};
+    if(meta && meta.sha) body.sha=meta.sha;
+    return fetch(url,{method:'PUT',headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
+  }).then(function(r){ if(!r.ok){ return r.json().then(function(j){ throw new Error((j&&j.message)||('HTTP '+r.status)); }); } return r.json(); }).then(function(){
+    log('✔ 已同步到 GitHub！去小程序「验证同步」即可拉到最新。'); alert('同步成功！已推送到 GitHub，小程序「验证同步」即可拉到。');
+  }).catch(function(e){ alert('同步失败：'+(e.message||e)+'（检查令牌/网络/代理）'); log('同步失败：'+(e.message||e)); });
+}
+
 </script>
 </body></html>
