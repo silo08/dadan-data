@@ -26,13 +26,14 @@ td .nm{max-width:380px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 #log{background:#fff;border-radius:10px;padding:12px;font-size:13px;margin-top:10px;display:none;white-space:pre-wrap}
 </style></head><body>
 <header>打单数据编辑器 <a onclick="doLogout()">退出</a><span style="font-size:13px;margin-left:20px">配置 / 链接 / 价格 / 游戏帧数 全都能改</span></header>
-<div id="login"><h2>登录</h2><input id="u" placeholder="账号" value="趣娜玩"><input id="p" type="password" placeholder="密码"><button class="btn green" onclick="doLogin()">进入</button><div class="muted">内部工具 · 请勿外传。</div></div>
+<div id="login"><h2>登录</h2><input id="u" placeholder="账号" value="趣娜玩" autocomplete="username"><input id="p" type="password" placeholder="密码" autocomplete="new-password"><button class="btn green" onclick="doLogin()">进入</button><div class="muted">内部工具 · 请勿外传。</div></div>
 <div class="wrap" id="main" style="display:none">
   <div>
     <button class="btn" onclick="file.click()">导入 JSON(payload)</button>
     <button class="btn gray" onclick="fileXlsm.click()">导入 xlsm(仅价格表)</button>
     <button class="btn green" onclick="exportJson()">导出 JSON</button>
     <button class="btn gray" onclick="copyJson()">复制 JSON</button>
+    <button class="btn" onclick="loadRemote()">🔄 从官网载入</button>
     <button class="btn orange" onclick="syncGit()">💾 保存并同步到官网</button>
     <span class="muted">提示：加/改「整机配置」请在 WPS 改表后用「打单表转JSON」；改价/链接/帧数在此，点「保存并同步到官网」后小程序「验证同步」即拉最新。</span>
   </div>
@@ -44,11 +45,20 @@ td .nm{max-width:380px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 <input type="file" id="fileXlsm" accept=".xlsm" hidden>
 <script>
 var PW='888888',USER='趣娜玩'; var DATA=null; var TAB='prices', selCfg=null, selLink=null, CAT='san';
+var DATA_URL='https://silo08.github.io/dadan-data/data.json';
 function doLogin(){ if(document.getElementById('u').value.trim()===USER&&document.getElementById('p').value===PW){
     document.getElementById('login').style.display='none';document.getElementById('main').style.display='block';
-    // 自动载入上次保存的数据（localStorage，同一设备）
-    try{ var saved=localStorage.getItem('dadanData'); if(saved){ parseJson(saved); log('已载入本设备上次保存的数据'); } }catch(e){}
+    loadRemote(); // 优先从官网(GitHub)拉最新数据，跨设备一致
   }else alert('账号或密码不对'); }
+function loadRemote(){
+  log('正在从官网载入数据…');
+  fetch(DATA_URL).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(d){
+    parseJson(JSON.stringify(d)); log('✔ 已从官网载入最新数据（配置'+d.configs.length+'）');
+  }).catch(function(e){
+    try{ var saved=localStorage.getItem('dadanData'); if(saved){ parseJson(saved); log('官网加载失败('+e.message+')，已用本机上次数据'); return; } }catch(x){}
+    log('官网加载失败：'+(e.message||e)+'。请用「导入 JSON」或点「从官网载入」。');
+  });
+}
 function saveLocal(){ try{ if(DATA) localStorage.setItem('dadanData', JSON.stringify(DATA)); }catch(e){} }
 function doLogout(){ document.getElementById('login').style.display='block'; document.getElementById('main').style.display='none'; }
 function log(m){ var x=document.getElementById('log'); x.style.display='block'; x.textContent=m; }
@@ -66,7 +76,7 @@ function render(){ var tabs=document.getElementById('tabs'); var Ts=[['configs',
   bindEvents();
 }
 /* ---- 价格表 ---- */
-function renderPrices(){ var h='<div class="tabs">'; var CATS=[['san','三大件'],['re','散热'],['ban','主板'],['ka','显卡'],['yuan','电源'],['xiang','机箱']]; CATS.forEach(function(c){ h+='<span class="tab'+(c[0]===CAT?' on':'')+'" onclick="CAT=\''+c[0]+'\';render()">'+c[1]+'</span>'; }); h+='</div>'; var rows=DATA.prices[CAT]||{}; h+='<table><tr><th>名称</th><th>成本d</th><th>售价e</th><th>数值f</th><th></th></tr>'; Object.keys(rows).forEach(function(nm){ var o=rows[nm]; h+='<tr><td class="nm" title="'+esc(nm)+'">'+esc(nm)+'</td><td><input data-p="'+esc(nm)+'" data-f="d" value="'+o.d+'"></td><td><input data-p="'+esc(nm)+'" data-f="e" value="'+o.e+'"></td><td><input data-p="'+esc(nm)+'" data-f="f" value="'+o.f+'"></td><td><button class="btn gray" onclick="delPrice(\''+nm.replace(/'/g,"\\'")+'\')">删</button></td></tr>'; }); h+='</table>'; return h; }
+function renderPrices(){ var h='<div class="tabs">'; var CATS=[['san','三大件'],['re','散热'],['ban','主板'],['ka','显卡'],['yuan','电源'],['xiang','机箱']]; CATS.forEach(function(c){ h+='<span class="tab'+(c[0]===CAT?' on':'')+'" onclick="CAT=\''+c[0]+'\';render()">'+c[1]+'</span>'; }); h+='</div>'; var rows=DATA.prices[CAT]||{}; h+='<table><tr><th>名称</th><th>未税(C)</th><th>含税(D)</th><th>展示(E)</th><th>零售(F)</th><th></th></tr>'; var ks=Object.keys(rows).sort(function(a,b){return a.localeCompare(b,'zh');}); ks.forEach(function(nm){ var o=rows[nm]; h+='<tr><td class="nm" title="'+esc(nm)+'">'+esc(nm)+'</td><td><input data-p="'+esc(nm)+'" data-f="c" value="'+o.c+'"></td><td><input data-p="'+esc(nm)+'" data-f="d" value="'+o.d+'"></td><td><input data-p="'+esc(nm)+'" data-f="e" value="'+o.e+'"></td><td><input data-p="'+esc(nm)+'" data-f="f" value="'+o.f+'"></td><td><button class="btn gray" onclick="delPrice(\''+nm.replace(/'/g,"\\'")+'\')">删</button></td></tr>'; }); h+='</table>'; return h; }
 function delPrice(nm){ delete DATA.prices[CAT][nm]; render(); }
 /* ---- 整机配置 ---- */
 function renderConfigs(){ var h='<div class="listbox">'; (DATA.configs||[]).forEach(function(c,i){ h+='<div class="it'+(selCfg===i?' on':'')+'" onclick="selCfg='+i+';render()">'+esc(c.sheet)+' <small>'+esc(String(c.key).slice(0,40))+'</small></div>'; }); h+='</div>'; if(selCfg==null) return h; var c=DATA.configs[selCfg]; h+='<h3>'+esc(c.sheet)+' · '+esc(c.fn)+'</h3><table><tr><th>件</th><th>型号</th><th>数量</th></tr>'; c.items.forEach(function(it,idx){ h+='<tr><td><input data-ci="'+idx+'" data-fi="ltext" value="'+esc(it.ltext)+'"></td><td><input data-ci="'+idx+'" data-fi="name" value="'+esc(it.name)+'"></td><td><input data-ci="'+idx+'" data-fi="qty" value="'+esc(it.qty)+'"></td></tr>'; }); h+='<tr><td colspan=3><button class="btn" onclick="addItem()">+ 加配件</button> <button class="btn gray" onclick="delItem()">删最后一件</button></td></tr></table>'; return h; }
@@ -109,13 +119,23 @@ function syncGit(){
   var url='https://api.github.com/repos/'+GH_OWNER+'/'+GH_REPO+'/contents/'+GH_PATH;
   var b64=null; try{ b64=btoa(unescape(encodeURIComponent(JSON.stringify(DATA)))); }catch(e){ alert('base64 编码失败'); return; }
   log('正在同步到 GitHub…');
-  fetch(url,{headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}}).then(function(r){return r.json();}).then(function(meta){
-    var body={message:'打单数据编辑器 同步', content:b64, branch:'main'};
-    if(meta && meta.sha) body.sha=meta.sha;
+  fetch(url,{headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}}).then(function(r){
+    console.log('[sync] GET status='+r.status);
+    if(!r.ok){ return r.json().then(function(j){ throw new Error('读取文件失败(HTTP '+r.status+')：'+(j&&j.message)); }); }
+    return r.json();
+  }).then(function(file){
+    if(!file || !file.sha) throw new Error('未拿到文件 sha');
+    var body={message:'打单数据编辑器 同步', content:b64, sha:file.sha};
+    console.log('[sync] 用 sha='+file.sha);
     return fetch(url,{method:'PUT',headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(body)});
-  }).then(function(r){ if(!r.ok){ return r.json().then(function(j){ throw new Error((j&&j.message)||('HTTP '+r.status)); }); } return r.json(); }).then(function(){
+  }).then(function(r){
+    console.log('[sync] PUT status='+r.status);
+    if(!r.ok){ return r.json().then(function(j){ throw new Error('写入失败(HTTP '+r.status+')：'+(j&&j.message)); }); }
+    return r.json();
+  }).then(function(){
+    console.log('[sync] 成功');
     log('✔ 已同步到 GitHub！去小程序「验证同步」即可拉到最新。'); alert('同步成功！已推送到 GitHub，小程序「验证同步」即可拉到。');
-  }).catch(function(e){ alert('同步失败：'+(e.message||e)+'（检查令牌/网络/代理）'); log('同步失败：'+(e.message||e)); });
+  }).catch(function(e){ console.log('[sync] 失败', e); alert('同步失败：'+(e.message||e)+'（看控制台 [sync] 日志）'); log('同步失败：'+(e.message||e)); });
 }
 
 </script>
