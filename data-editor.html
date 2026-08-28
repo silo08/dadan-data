@@ -25,7 +25,7 @@ td .nm{max-width:380px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 #login input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #ddd;border-radius:8px;margin:6px 0}
 #log{background:#fff;border-radius:10px;padding:12px;font-size:13px;margin-top:10px;display:none;white-space:pre-wrap}
 </style></head><body>
-<header>打单数据编辑器 <a onclick="doLogout()">退出</a><span style="font-size:13px;margin-left:20px">配置 / 链接 / 价格 / 游戏帧数 全都能改</span></header>
+<header>打单数据编辑器 <a onclick="doLogout()">退出</a><span style="font-size:13px;margin-left:20px">配置 / 链接 / 价格 / 游戏帧数 全都能改</span> <span id="ver" style="font-size:13px;margin-left:14px;color:#8a4bd0;font-weight:700">版本：-</span> <span id="ok" style="display:none;font-size:13px;margin-left:8px;color:#2e9e5b;font-weight:700">✔ 已同步到官网</span></header>
 <div id="login"><h2>登录</h2><input id="u" placeholder="账号" value="趣娜玩" autocomplete="username"><input id="p" type="password" placeholder="密码" autocomplete="new-password"><button class="btn green" onclick="doLogin()">进入</button><div class="muted">内部工具 · 请勿外传。</div></div>
 <div class="wrap" id="main" style="display:none">
   <div>
@@ -35,7 +35,7 @@ td .nm{max-width:380px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
     <button class="btn gray" onclick="copyJson()">复制 JSON</button>
     <button class="btn" onclick="loadRemote()">🔄 从官网载入</button>
     <button class="btn orange" onclick="syncGit()">💾 保存并同步到官网</button>
-    <span class="muted">提示：加/改「整机配置」请在 WPS 改表后用「打单表转JSON」；改价/链接/帧数在此，点「保存并同步到官网」后小程序「验证同步」即拉最新。</span>
+    <span class="muted">提示：改价/链接/帧数在此改完点「保存并同步到官网」即更新(WEB)；新增配置清单请在 WPS 打单表加表(G1+配置锚点)，用「打单表 一键分发」发布（小程序走微信云、WEB走GitHub，全端一致）。</span>
   </div>
   <div class="tabs" id="tabs"></div>
   <div id="body"></div>
@@ -54,11 +54,13 @@ function loadRemote(){
   log('正在从官网载入数据…');
   fetch(DATA_URL).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(d){
     parseJson(JSON.stringify(d)); log('✔ 已从官网载入最新数据（配置'+d.configs.length+'）');
+    setVer(d.exported);
   }).catch(function(e){
-    try{ var saved=localStorage.getItem('dadanData'); if(saved){ parseJson(saved); log('官网加载失败('+e.message+')，已用本机上次数据'); return; } }catch(x){}
+    try{ var saved=localStorage.getItem('dadanData'); if(saved){ parseJson(saved); log('官网加载失败('+e.message+')，已用本机上次数据'); setVer(DATA&&DATA.exported); return; } }catch(x){}
     log('官网加载失败：'+(e.message||e)+'。请用「导入 JSON」或点「从官网载入」。');
   });
 }
+function setVer(exp){ try{ var el=document.getElementById('ver'); if(el){ var v=DATA&&DATA.version?( 'v'+DATA.version+'-' ):( (DATA&&DATA.exported)?('v?-'):'' ); el.textContent='版本：'+(DATA&&DATA.version?('打单表-v'+DATA.version+'-'+String(exp)):(exp?('打单表-'+String(exp)):'-')); } }catch(e){} }
 function saveLocal(){ try{ if(DATA) localStorage.setItem('dadanData', JSON.stringify(DATA)); }catch(e){} }
 function doLogout(){ document.getElementById('login').style.display='block'; document.getElementById('main').style.display='none'; }
 function log(m){ var x=document.getElementById('log'); x.style.display='block'; x.textContent=m; }
@@ -137,7 +139,9 @@ function syncGit(){
     return r.json();
   }).then(function(){
     console.log('[sync] 成功');
-    log('✔ 已同步到 GitHub！去小程序「验证同步」即可拉到最新。'); alert('同步成功！已推送到 GitHub，小程序「验证同步」即可拉到。');
+    log('✔ 已同步到官网(GitHub)！WEB/小程序即读到最新。');
+    try{ var ok=document.getElementById('ok'); if(ok){ ok.style.display='inline'; setTimeout(function(){ ok.style.display='none'; },4000); } }catch(e){}
+    setVer(DATA&&DATA.exported);
   }).catch(function(e){ console.log('[sync] 失败', e); alert('同步失败：'+(e.message||e)+'（看控制台 [sync] 日志）'); log('同步失败：'+(e.message||e)); });
 }
 
