@@ -59,7 +59,7 @@
     h += '<div class="melist" style="margin-top:18px">';
     h += '<div class="me-row"><span class="k">账号等级</span><span class="v">' + esc(roleName(role)) + '</span></div>';
     h += '<div class="me-row"><span class="k">专属ID</span><span class="v">' + esc(m.id) + '（不可编辑）</span></div>';
-    h += '<div class="me-row"><span class="k">数据管理</span><a id="openEditor" target="_blank" rel="noopener">打开数据编辑器 ↗</a></div>';
+    h += '<div class="me-row"><span class="k">数据管理</span><a id="openEditor" target="_blank" rel="noopener" href="https://silo08.github.io/dadan-data/data-editor.html">打开数据编辑器 ↗</a></div>';
     h += '</div>';
     h += '<div class="muted" style="margin:10px 0">当前业务员昵称（生成图用）：<b>' + esc(s.nick || m.nick || '') + '</b></div>';
     if (isAdm) h += '<div id="admBox"></div>';
