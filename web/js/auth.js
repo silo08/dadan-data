@@ -71,5 +71,5 @@
     var id = String(t || '').replace(/^local:/, ''); saveLocal(loadLocal().filter(function (u) { return u.id !== id; })); return Promise.resolve({ ok: true });
   }
   ensureMain();
-  root.Auth = { login: login, logout: logout, register: register, me: me, isAdmin: isAdmin, setNickname: setNickname, byId: byId, getRegList: getRegList, approveReg: approveReg, rejectReg: rejectReg };
+  root.Auth = { login: login, logout: logout, register: register, me: me, isAdmin: isAdmin, setNickname: setNickname, byId: byId, getRegList: getRegList, approveReg: approveReg, rejectReg: rejectReg, apiUrl: apiUrl };
 })(typeof self !== 'undefined' ? self : this);
