@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>打单工具 · WEB</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topnav">
+  <div class="brand"><img class="logo" src="images/logo.png" alt="logo"><span class="bname">趣娜玩电脑</span></div>
+  <nav class="navlinks" id="navlinks">
+    <a class="navbtn" data-page="home">🏠 主页</a>
+    <a class="navlink on" data-page="me">我的</a>
+    <a class="navbtn" data-actnav="cpu">CPU实测功耗汇总</a>
+    <a class="navbtn" data-actnav="gpu">显卡实测功耗汇总</a>
+    <a class="navbtn" data-actnav="bijia">全网比价</a>
+    <a class="navbtn" data-actnav="kdocs">电商链接总表</a>
+  </nav>
+  <div class="topstatus">
+    <button class="btn primary top-btn" data-actnav="reload">↻ 刷新数据</button>
+    <span class="statver" id="statVer">—</span>
+    <span class="capyopts">
+      <span class="capylbl">透明</span><input type="range" id="capyO" class="capysl" min="10" max="100" value="100">
+      <span class="capylbl">大小</span><input type="range" id="capyS" class="capysl" min="30" max="200" value="100">
+    </span>
+    <button class="capybtn" id="btnToggleCapy" title="点击隐藏噜噜">隐藏噜噜</button>
+  </div>
+</header>
+
+<main id="pageBody" class="page active"></main>
+
+<div id="modal"><div class="box" id="modalBox"></div></div>
+<div id="pickerPop"></div>
+<div id="toast" class="toast"></div>
+
+<!-- 引擎与数据（浏览器+小程序共用，零改动） -->
+<script src="engine/data.js"></script>
+<script src="engine/engine.js"></script>
+
+<!-- 网页版逻辑 -->
+<script src="js/ui.js"></script>
+<script src="js/store.js"></script>
+<script src="js/config.js"></script>
+<script src="js/loader.js"></script>
+<script src="js/picker.js"></script>
+<script src="js/poster.js"></script>
+<script src="js/capy.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/fpsdata.js"></script>
+<script src="js/page-calc.js"></script>
+<script src="js/page-work.js"></script>
+<script src="js/page-bcj.js"></script>
+<script src="js/page-live.js"></script>
+<script src="js/page-prices.js"></script>
+<script src="js/page-me.js"></script>
+<script src="js/page-consumption.js"></script>
+<script src="js/page-aftersale.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
