@@ -25867,6 +25867,16 @@
                          "d":  "65"
                      },
                      {
+                         "model":  "Ryzen 5 9500F",
+                         "group":  "【AMD AM5 - 9000系列 Zen5】",
+                         "idle":  "14-17",
+                         "spec":  "AM5",
+                         "peak":  "108",
+                         "note":  "Zen5无核显特供版，TDP65W/PPT88W，游戏功耗约60W",
+                         "load":  "95",
+                         "d":  "65"
+                     },
+                     {
                          "model":  "Ryzen 5 9600X",
                          "group":  "【AMD AM5 - 9000系列 Zen5】",
                          "idle":  "14-17",
@@ -25894,6 +25904,16 @@
                          "peak":  "162",
                          "note":  "二代3D V-Cache，满载约142-162W",
                          "load":  "142",
+                         "d":  "120"
+                     },
+                     {
+                         "model":  "Ryzen 7 9850X3D",
+                         "group":  "【AMD AM5 - 9000系列 Zen5】",
+                         "idle":  "18-22",
+                         "spec":  "AM5",
+                         "peak":  "175",
+                         "note":  "9800X3D提频版，二代3D V-Cache，PPT上限约170W",
+                         "load":  "150",
                          "d":  "120"
                      },
                      {
@@ -26197,6 +26217,16 @@
                          "note":  "12GB大显存，TDP 170W",
                          "load":  "160",
                          "d":  "170"
+                     },
+                     {
+                         "model":  "RTX 3050 6G",
+                         "group":  "【英伟达RTX 30系列 - Ampere】",
+                         "idle":  "5-8",
+                         "spec":  "Ampere",
+                         "peak":  "80",
+                         "note":  "6GB版免外接供电，官方TGP 70W，比8G版低约一半功耗",
+                         "load":  "65",
+                         "d":  "70"
                      },
                      {
                          "model":  "RX 9070 XT",
@@ -28047,5 +28077,5 @@
                                     ]
                       }
                   ],
-    "version":  19
+    "version":  20
 }
